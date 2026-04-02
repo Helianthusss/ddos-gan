@@ -39,3 +39,18 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# LaTeX
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+
+# Temporal Scripts
+restructure.py

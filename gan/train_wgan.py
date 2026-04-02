@@ -4,8 +4,9 @@ Mục tiêu: Generator học sinh fake DDoS traffic đủ tinh vi để
           bypass Detector (white-box attack via auxiliary loss).
 
 Loss tổng quát của Generator:
-    L_G = -E[Critic(fake)]              ← WGAN generator loss
-        + lambda_adv * BCE(Detector(fake), DDoS=1)  ← fool detector
+    L_G = -E[Critic(fake)]                           ← WGAN generator loss
+        + lambda_adv  * BCE(Detector(fake), 0)       ← fool detector (bypass)
+        + lambda_con  * MSE(fake[func], mean[func])  ← constraint: giữ functional features
 """
 
 import torch
@@ -18,6 +19,7 @@ from tqdm import tqdm
 
 from gan.generator import Generator
 from gan.discriminator import Critic, gradient_penalty
+from gan.feature_config import FeatureConfig
 from detector.mlp import MLPDetector
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -37,6 +39,7 @@ LR_C         = 1e-4
 N_CRITIC     = 5          # Train critic N_CRITIC lần mỗi bước Generator
 LAMBDA_GP    = 10.0       # Gradient penalty weight
 LAMBDA_ADV   = 1.0        # Auxiliary detector loss weight
+LAMBDA_CON   = 5.0        # Constraint loss weight (0 = ablation without constraint)
 LOG_EVERY    = 20         # Print log mỗi N epoch
 
 GEN_HIDDEN   = [128, 256, 256, 128]
@@ -57,20 +60,28 @@ def load_ddos_only() -> torch.Tensor:
     return torch.tensor(X_ddos, dtype=torch.float32)
 
 
-def load_detector(input_dim: int) -> MLPDetector:
-    """Load detector đã train ở Phase 1 — freeze weights"""
+def load_detector(round_id: int = 1) -> MLPDetector:
+    """
+    Load detector đúng với round:
+      round_id=1 → detector_best.pt    (Detector v1 — baseline)
+      round_id=2 → detector_adv_r1.pt  (Detector v2 — sau adversarial training)
+    """
     with open(f"{DETECTOR_DIR}/model_config.pkl", "rb") as f:
         cfg = pickle.load(f)
     model = MLPDetector(cfg["input_dim"], cfg["hidden_dims"], cfg["dropout"])
+
+    det_path = (
+        f"{DETECTOR_DIR}/detector_best.pt"    if round_id == 1
+        else f"{DETECTOR_DIR}/detector_adv_r1.pt"
+    )
     model.load_state_dict(
-        torch.load(f"{DETECTOR_DIR}/detector_best.pt",
-                   map_location=DEVICE, weights_only=True)
+        torch.load(det_path, map_location=DEVICE, weights_only=True)
     )
     model.to(DEVICE)
     model.eval()
     for p in model.parameters():
         p.requires_grad = False   # Freeze — chỉ dùng để tính loss
-    print(f"[INFO] Detector loaded & frozen (white-box auxiliary loss)")
+    print(f"[INFO] Detector loaded & frozen → {det_path}")
     return model
 
 
@@ -79,19 +90,37 @@ def load_detector(input_dim: int) -> MLPDetector:
 def train_wgan(round_id: int = 1, prev_generator_path: str = None):
     """
     Train WGAN-GP.
-    round_id=1 → Phase 2 (attack Detector v1)
-    round_id=2 → Phase 5 (attack Detector v2 sau adversarial training)
+    round_id=0 → Phase A: Pure generation (chỉ WGAN loss, không bypass detector)
+    round_id=1 → Phase B Round 1 (attack Detector v1)
+    round_id=2 → Phase B Round 2 (attack Detector v2 sau adversarial training)
     prev_generator_path: nếu có, init Generator từ checkpoint trước
     """
     print(f"\n{'='*60}")
     print(f"  WGAN-GP Training — Round {round_id}")
     print(f"  Device: {DEVICE} | Epochs: {EPOCHS} | Latent: {LATENT_DIM}")
+    mode = "pure" if round_id == 0 else "adversarial"
+    print(f"  Mode     : {mode.upper()} | Round: {round_id}")
     print(f"{'='*60}")
 
-    # Load data & detector
-    X_ddos   = load_ddos_only()
-    detector = load_detector(X_ddos.shape[1])
+    # Load data
+    X_ddos    = load_ddos_only()
     input_dim = X_ddos.shape[1]
+
+    # Detector chỉ cần ở adversarial mode
+    detector = None
+    if round_id > 0:
+        detector = load_detector(round_id=round_id)
+
+    # Feature config cho constraint loss
+    feat_cfg = FeatureConfig()
+    func_idx = torch.tensor(feat_cfg.functional_idx, dtype=torch.long, device=DEVICE)
+
+    # Tính mean của functional features trên real DDoS — dùng làm anchor cho constraint
+    X_real_np   = X_ddos.numpy()
+    func_mean   = torch.tensor(
+        X_real_np[:, feat_cfg.functional_idx].mean(axis=0),
+        dtype=torch.float32, device=DEVICE
+    )  # shape: (n_func_features,)
 
     loader = DataLoader(
         TensorDataset(X_ddos),
@@ -108,6 +137,12 @@ def train_wgan(round_id: int = 1, prev_generator_path: str = None):
         G.load_state_dict(torch.load(prev_generator_path,
                                      map_location=DEVICE, weights_only=True))
         print(f"[INFO] Generator warm-started from {prev_generator_path}")
+    elif round_id > 0:
+        # Adversarial mode: warm-start từ pure generator nếu có
+        pure_path = f"{SAVE_DIR}/generator_r0.pt"
+        if os.path.exists(pure_path):
+            G.load_state_dict(torch.load(pure_path, map_location=DEVICE, weights_only=True))
+            print(f"[INFO] Warm-started from pure generator: {pure_path}")
 
     opt_G = torch.optim.Adam(G.parameters(), lr=LR_G, betas=(0.0, 0.9))
     opt_C = torch.optim.Adam(C.parameters(), lr=LR_C, betas=(0.0, 0.9))
@@ -118,17 +153,18 @@ def train_wgan(round_id: int = 1, prev_generator_path: str = None):
     # Tracking
     history = {
         "critic_loss": [], "gen_loss": [], "adv_loss": [],
-        "detector_fool_rate": []
+        "con_loss": [], "detector_fool_rate": []
     }
 
-    print(f"\n{'Epoch':>6} | {'C_loss':>8} | {'G_loss':>8} | {'Adv':>8} | {'FoolRate':>8}")
-    print("-" * 55)
+    print(f"\n{'Epoch':>6} | {'C_loss':>8} | {'G_loss':>8} | {'Adv':>8} | {'Con':>8} | {'FoolRate':>8}")
+    print("-" * 65)
 
     for epoch in range(1, EPOCHS + 1):
         G.train(); C.train()
         epoch_c_loss = []
         epoch_g_loss = []
         epoch_adv    = []
+        epoch_con    = []
 
         for (real_batch,) in loader:
             real = real_batch.to(DEVICE)
@@ -159,15 +195,24 @@ def train_wgan(round_id: int = 1, prev_generator_path: str = None):
             # WGAN Generator loss: fool Critic
             g_loss_wgan = -C(fake).mean()
 
-            # Auxiliary loss: fool Detector
-            # Muốn Detector classify fake là DDoS (label=1) nhưng với confidence thấp
-            # → Generator học tạo ra samples nằm ở vùng boundary
-            det_logits = detector(fake)
-            # Label = 0 (BENIGN) → Generator cố tạo traffic trông như BENIGN
-            adv_targets = torch.zeros(bsz, device=DEVICE)
-            adv_loss = bce(det_logits, adv_targets)
-
-            g_loss = g_loss_wgan + LAMBDA_ADV * adv_loss
+            if round_id == 0:
+                # Pure mode: chỉ WGAN loss + constraint loss (giữ functional features)
+                adv_loss = torch.tensor(0.0, device=DEVICE)
+                fake_func = fake[:, func_idx]
+                con_loss  = nn.functional.mse_loss(
+                    fake_func, func_mean.unsqueeze(0).expand(bsz, -1)
+                )
+                g_loss = g_loss_wgan + LAMBDA_CON * con_loss
+            else:
+                # Adversarial mode: WGAN + fool detector + constraint
+                det_logits  = detector(fake)
+                adv_targets = torch.zeros(bsz, device=DEVICE)
+                adv_loss    = bce(det_logits, adv_targets)
+                fake_func = fake[:, func_idx]
+                con_loss  = nn.functional.mse_loss(
+                    fake_func, func_mean.unsqueeze(0).expand(bsz, -1)
+                )
+                g_loss = g_loss_wgan + LAMBDA_ADV * adv_loss + LAMBDA_CON * con_loss
 
             opt_G.zero_grad()
             g_loss.backward()
@@ -175,31 +220,37 @@ def train_wgan(round_id: int = 1, prev_generator_path: str = None):
 
             epoch_g_loss.append(g_loss_wgan.item())
             epoch_adv.append(adv_loss.item())
+            epoch_con.append(con_loss.item())
 
-        # ── Evaluate fool rate mỗi epoch ─────────────────────────────────────
+        # ── Evaluate fool rate (chỉ adversarial mode) ──────────────────────────
         G.eval()
         with torch.no_grad():
-            z_eval     = torch.randn(2000, LATENT_DIM, device=DEVICE)
-            fake_eval  = G(z_eval)
-            det_logits = detector(fake_eval)
-            det_preds  = (torch.sigmoid(det_logits) >= 0.5).float()
-            # Fool rate = tỉ lệ fake samples bị classify là BENIGN (detector bị qua mặt)
-            fool_rate  = (det_preds == 0).float().mean().item()
+            z_eval    = torch.randn(2000, LATENT_DIM, device=DEVICE)
+            fake_eval = G(z_eval)
+            if round_id > 0 and detector is not None:
+                det_logits = detector(fake_eval)
+                det_preds  = (torch.sigmoid(det_logits) >= 0.5).float()
+                fool_rate  = (det_preds == 0).float().mean().item()
+            else:
+                # Pure mode: tính validity thay thế (% samples trong valid range)
+                fool_rate = 0.0   # không có ý nghĩa trong pure mode
 
         avg_c    = np.mean(epoch_c_loss)
         avg_g    = np.mean(epoch_g_loss)
         avg_adv  = np.mean(epoch_adv)
+        avg_con  = np.mean(epoch_con)
 
         history["critic_loss"].append(avg_c)
         history["gen_loss"].append(avg_g)
         history["adv_loss"].append(avg_adv)
+        history["con_loss"].append(avg_con)
         history["detector_fool_rate"].append(fool_rate)
 
         if epoch % LOG_EVERY == 0 or epoch == 1:
             print(f"{epoch:>6} | {avg_c:>8.4f} | {avg_g:>8.4f} | "
-                  f"{avg_adv:>8.4f} | {fool_rate:>8.4f}")
+                  f"{avg_adv:>8.4f} | {avg_con:>8.4f} | {fool_rate:>8.4f}")
 
-    print("-" * 55)
+    print("-" * 65)
     print(f"\n✅ Final Fool Rate: {history['detector_fool_rate'][-1]:.4f}")
     print(f"   (tỉ lệ fake DDoS bị Detector nhầm là BENIGN)")
 

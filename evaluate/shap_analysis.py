@@ -91,8 +91,18 @@ def run_shap_analysis():
 
     with open(f"{DATA_DIR}/feature_names.pkl", "rb") as f:
         feature_names = pickle.load(f)
+    # Đảm bảo feature_names là flat list of str (tránh nested list / ndarray)
+    if isinstance(feature_names, np.ndarray):
+        feature_names = feature_names.flatten().tolist()
+    elif isinstance(feature_names, list) and len(feature_names) > 0 and isinstance(feature_names[0], (list, np.ndarray)):
+        feature_names = [n for sub in feature_names for n in sub]
+    else:
+        feature_names = list(feature_names)  # copy
 
     cfg = FeatureConfig()
+    # Ưūu tiên dùng cfg.feature_names nếu match về số lượng (guaranteed flat)
+    if len(cfg.feature_names) == len(feature_names):
+        feature_names = list(cfg.feature_names)
 
     model_v1 = load_mlp(f"{DETECTOR_DIR}/detector_best.pt")
     model_v2 = load_mlp(f"{DETECTOR_DIR}/detector_adv_r1.pt")
@@ -102,9 +112,11 @@ def run_shap_analysis():
 
     print("[SHAP] Computing SHAP values for Detector v1 ...")
     shap_v1 = get_shap_values(model_v1, X_ddos, X_test, n_bg=100, n_test=300)
+    print(f"       shap_v1 shape={shap_v1.shape}, dtype={shap_v1.dtype}")
 
     print("[SHAP] Computing SHAP values for Detector v2 ...")
     shap_v2 = get_shap_values(model_v2, X_ddos, X_test, n_bg=100, n_test=300)
+    print(f"       shap_v2 shape={shap_v2.shape}, dtype={shap_v2.dtype}")
 
     # ── Compare functional vs non-functional ─────────────────────────────────
     func_idx    = cfg.functional_idx

@@ -1,6 +1,8 @@
 """
-Day 3/4 — Phase 3 Evaluation
-Test Detector Phase 1 với GAN-generated adversarial samples.
+Phase 3 Evaluation
+Test Detector v{round_id} với GAN Round {round_id} adversarial samples.
+  round_id=1 → detector_best.pt    vs fake_ddos_r1.npy
+  round_id=2 → detector_adv_r1.pt  vs fake_ddos_r2.npy
 Metrics: F1, AUC, FNR + KL Divergence + KS Statistic
 """
 
@@ -28,15 +30,24 @@ os.makedirs(EVAL_DIR, exist_ok=True)
 
 # ── Load Detector ─────────────────────────────────────────────────────────────
 
-def load_detector():
+def load_detector(round_id: int = 1):
+    """
+    Load đúng detector theo round:
+      round_id=1 → detector_best.pt    (Detector v1 — baseline)
+      round_id=2 → detector_adv_r1.pt  (Detector v2 — sau adversarial training)
+    """
     with open(f"{DETECTOR_DIR}/model_config.pkl", "rb") as f:
         cfg = pickle.load(f)
     model = MLPDetector(cfg["input_dim"], cfg["hidden_dims"], cfg["dropout"])
+    det_path = (
+        f"{DETECTOR_DIR}/detector_best.pt" if round_id == 1
+        else f"{DETECTOR_DIR}/detector_adv_r1.pt"
+    )
     model.load_state_dict(
-        torch.load(f"{DETECTOR_DIR}/detector_best.pt",
-                   map_location=DEVICE, weights_only=True)
+        torch.load(det_path, map_location=DEVICE, weights_only=True)
     )
     model.to(DEVICE).eval()
+    print(f"[INFO] Loaded detector → {det_path}")
     return model
 
 
@@ -161,8 +172,9 @@ def phase3_evaluation(round_id: int = 1):
     print(f"  Phase 3 — Detector vs GAN Adversarial Samples (Round {round_id})")
     print(f"{'='*58}")
 
-    # Load detector
-    detector = load_detector()
+    # Load đúng detector theo round
+    detector = load_detector(round_id=round_id)
+    det_label = "Detector v1 (Baseline)" if round_id == 1 else f"Detector v{round_id} (Adv. Round {round_id-1})"
 
     # Load test set thật
     X_test = np.load(f"{DATA_DIR}/X_test.npy")
@@ -182,7 +194,7 @@ def phase3_evaluation(round_id: int = 1):
     print("\n[Step 1] Detector on REAL test set (baseline check) ...")
     probs_real, preds_real = predict(detector, X_test)
     m_baseline = compute_metrics(y_test, preds_real, probs_real,
-                                  "Phase 1 Recap — Real Test Set")
+                                  f"Baseline — {det_label} on Real Test Set")
     print_metrics(m_baseline)
 
     # ── 2. Adversarial test set: real BENIGN + fake DDoS ──────────

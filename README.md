@@ -184,3 +184,15 @@ Xem `requirements.txt`
 ## License
 
 MIT
+
+## Presentation
+
+Toàn bộ slide báo cáo quá trình nghiên cứu và kết quả được thiết kế chuyên nghiệp bằng LaTeX nằm trong thư mục `slides/`.
+- `main.tex`: Source code LaTeX (20 trang) với biểu đồ TiKZ minh họa pipeline.
+- `gen_figures.py`: Script tự động render đồ thị heatmap, timeline và phân phối.
+
+Để biên dịch slide ra PDF:
+```bash
+cd slides
+pdflatex main.tex
+```
