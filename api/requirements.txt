@@ -1,0 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+fastapi[standard]==0.115.6
+pydantic==2.10.4
+numpy<2.0
+torch==2.5.1+cpu; sys_platform == 'linux'
+torch==2.5.1; sys_platform != 'linux'

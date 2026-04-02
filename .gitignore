@@ -6,11 +6,18 @@ env/
 # Data files (quá lớn cho git)
 data/*.csv
 data/processed/
+!data/processed/X_test.npy
+!data/processed/y_test.npy
 
 # Model checkpoints
-detector/*.pt
 detector/*.pkl
+detector/*.pt
+!detector/detector_best.pt
+!detector/detector_adv_r1.pt
+
 gan/*.pt
+!gan/generator_r0.pt
+!gan/generator_r2.pt
 gan/*.npy
 
 # Evaluation outputs
