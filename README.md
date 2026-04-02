@@ -74,7 +74,7 @@ ddos-gan/
 
 ```bash
 # Clone repo
-git clone https://github.com/<your-username>/ddos-gan.git
+git clone https://github.com/Helianthusss/ddos-gan.git
 cd ddos-gan
 
 # Tạo virtual environment
@@ -186,10 +186,6 @@ Xem `requirements.txt`
 MIT
 
 ## Presentation
-
-Toàn bộ slide báo cáo quá trình nghiên cứu và kết quả được thiết kế chuyên nghiệp bằng LaTeX nằm trong thư mục `slides/`.
-- `main.tex`: Source code LaTeX (20 trang) với biểu đồ TiKZ minh họa pipeline.
-- `gen_figures.py`: Script tự động render đồ thị heatmap, timeline và phân phối.
 
 Để biên dịch slide ra PDF:
 ```bash
