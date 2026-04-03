@@ -2,5 +2,7 @@
 fastapi[standard]==0.115.6
 pydantic==2.10.4
 numpy<2.0
+scikit-learn
 torch==2.5.1+cpu
+
 
