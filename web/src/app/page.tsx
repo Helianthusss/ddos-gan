@@ -311,7 +311,7 @@ export default function Dashboard() {
                                                         <YAxis domain={[0, 100]} tick={{ fill: '#475569', fontSize: 10 }} />
                                                         <ReferenceLine y={50} stroke="rgba(255,255,255,0.2)" strokeDasharray="4 4" />
                                                         <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                                                            formatter={(v: number) => [`${v}%`, 'Threat Score']} labelFormatter={() => ''} />
+                                                            formatter={(v) => [`${Number(v ?? 0).toFixed(1)}%`, 'Threat Score']} labelFormatter={() => ''} />
                                                         <Bar dataKey="prob" radius={[2, 2, 0, 0]}>
                                                             {distChartData.map((entry, i) => (
                                                                 <Cell key={i} fill={entry.bypassed ? '#10b981' : '#f43f5e'} fillOpacity={0.8} />
@@ -370,7 +370,7 @@ export default function Dashboard() {
                                                         <YAxis domain={[0, 100]} tick={{ fill: '#475569', fontSize: 10 }} />
                                                         <ReferenceLine y={50} stroke="rgba(255,255,255,0.2)" strokeDasharray="4 4" />
                                                         <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                                                            formatter={(v: number) => [`${v}%`, 'Threat Score']} labelFormatter={() => ''} />
+                                                            formatter={(v) => [`${Number(v ?? 0).toFixed(1)}%`, 'Threat Score']} labelFormatter={() => ''} />
                                                         <Bar dataKey="prob" radius={[2, 2, 0, 0]}>
                                                             {distChartDataAlt.map((entry, i) => (
                                                                 <Cell key={i} fill={entry.bypassed ? '#10b981' : '#f43f5e'} fillOpacity={0.8} />
