@@ -77,7 +77,7 @@ def generate_fake(round: int = 0):
             return {"error": "Invalid round"}
     return {"features": fake.cpu().numpy()[0].tolist(), "type": f"GAN Round {round}"}
 
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 @app.post("/api/detect")
 def detect(model: str, req: Dict[str, Any]):
@@ -94,3 +94,38 @@ def detect(model: str, req: Dict[str, Any]):
     
     status = "BLOCKED" if prob >= 0.5 else "BYPASSED"
     return {"probability": prob, "status": status}
+
+
+@app.post("/api/batch_test")
+def batch_test(gan_round: int = 0, n: int = 100, model: str = "v1"):
+    """Generate N samples from GAN and detect all → return bypass rate stats."""
+    if n < 1 or n > 500:
+        return {"error": "n must be between 1 and 500"}
+    if gan_round not in [0, 2]:
+        return {"error": "gan_round must be 0 or 2"}
+    
+    gen = gen_r0 if gan_round == 0 else gen_r2
+    detector = detector_v1 if model == "v1" else detector_v2
+    
+    z = torch.randn(n, latent_dim, device=DEVICE)
+    with torch.no_grad():
+        fakes = gen(z)                      # (n, 80)
+        logits = detector(fakes)            # (n,)
+        probs = torch.sigmoid(logits).cpu().numpy()  # (n,)
+    
+    bypassed_mask = probs < 0.5
+    n_bypassed = int(bypassed_mask.sum())
+    bypass_rate = float(n_bypassed / n)
+    
+    return {
+        "gan_round": gan_round,
+        "detector": model,
+        "n_samples": n,
+        "n_bypassed": n_bypassed,
+        "n_blocked": n - n_bypassed,
+        "bypass_rate": round(bypass_rate * 100, 2),
+        "mean_prob": round(float(probs.mean()) * 100, 2),
+        "probs_distribution": [
+            round(float(p) * 100, 2) for p in probs[:50]   # first 50 for chart
+        ]
+    }

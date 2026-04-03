@@ -18,6 +18,8 @@
 \usepackage{xcolor}
 \usepackage{multirow}
 \usepackage{pifont}  % \ding{51}=checkmark, \ding{55}=cross
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=primary,urlcolor=primary}
 \graphicspath{{figures/}}
 
 %% ── Colors ──────────────────────────────────────────────────────────────────
@@ -575,10 +577,136 @@
   \end{itemize}
 \end{frame}
 
+%% =============================================================================
+\section{7. Demo}
+%% =============================================================================
+
+\begin{frame}{Live Demo: Nexus Sentinel}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Web Application}
+        \begin{itemize}\setlength\itemsep{5pt}
+          \item \textbf{Frontend}: Next.js 16 + Recharts --- deploy trên \textbf{Vercel}
+          \item \textbf{Backend}: FastAPI + PyTorch --- deploy trên \textbf{Render (free)}
+          \item Real-time inference: GAN generate $\to$ IDS detect
+        \end{itemize}
+      \end{block}
+      \vspace{6pt}
+      \begin{exampleblock}{Batch Mode --- Arms Race Statistics}
+        \footnotesize
+        \setlength{\tabcolsep}{4pt}
+        \begin{tabular}{lccc}
+          \toprule
+          \textbf{GAN Round} & \textbf{N} & \textbf{IDS} & \textbf{Bypass Rate} \\
+          \midrule
+          Pure GAN (R0)   & 100 & v1 (Baseline) & 0\%     \\
+          Adv. GAN (R2)   & 100 & v1 (Baseline) & \textcolor{danger}{\textbf{100\%}}   \\
+          \midrule
+          Pure GAN (R0)   & 100 & v2 (Hardened) & \textcolor{warning}{\textbf{$\sim$0\%}} \\
+          Adv. GAN (R2)   & 100 & v2 (Hardened) & \textcolor{danger}{\textbf{100\%}}   \\
+          \bottomrule
+        \end{tabular}
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{alertblock}{Demo URL}
+        \centering\small
+        \textbf{\url{https://ddos-gan.vercel.app}}\\
+        \vspace{6pt}
+        \footnotesize
+        API Docs: \url{https://ddos-ganddos-gan-api.onrender.com/docs}
+      \end{alertblock}
+      \vspace{6pt}
+      \begin{block}{Tính năng}
+        \footnotesize
+        \begin{itemize}\setlength\itemsep{3pt}
+          \item \textbf{Single Payload}: Generate 1 sample $\to$ detect
+          \item \textbf{Radar chart}: Visualize top 15 features
+          \item \textbf{Batch Mode}: Generate N samples ($N \le 500$)
+          \item \textbf{Bypass rate}: So sánh R0 vs R2 real-time
+          \item \textbf{Distribution chart}: Threat score histogram
+          \item Chọn v1 / v2 detector độc lập
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% =============================================================================
+\section{8. Tài liệu tham khảo}
+%% =============================================================================
+
+\begin{frame}[allowframebreaks]{Tài liệu tham khảo}
+  \footnotesize
+  \begin{thebibliography}{99}
+
+    \bibitem{goodfellow2014}
+      I.~Goodfellow \textit{et al.},
+      ``Generative Adversarial Nets,''
+      \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2014.
+
+    \bibitem{arjovsky2017}
+      M.~Arjovsky, S.~Chintala, L.~Bottou,
+      ``Wasserstein GAN,''
+      \textit{ICML}, 2017.
+
+    \bibitem{gulrajani2017}
+      I.~Gulrajani \textit{et al.},
+      ``Improved Training of Wasserstein GANs,''
+      \textit{NeurIPS}, 2017.
+
+    \bibitem{ring2019}
+      M.~Ring \textit{et al.},
+      ``A survey of network-based intrusion detection data sets,''
+      \textit{Computers \& Security}, vol.~86, pp.~147--167, 2019.
+
+    \bibitem{sharafaldin2019}
+      I.~Sharafaldin, A.~H.~Lashkari, A.~A.~Ghorbani,
+      ``Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization,''
+      \textit{ICISSP}, 2019.
+      (\textbf{CIC-DDoS2019})
+
+    \bibitem{lin2018}
+      Z.~Lin \textit{et al.},
+      ``IDSGAN: Generative Adversarial Networks for Attack Generation against Intrusion Detection,''
+      \textit{arXiv:1809.02077}, 2018.
+
+    \bibitem{usama2019}
+      M.~Usama \textit{et al.},
+      ``Unsupervised Machine Learning for Networking: Techniques, Applications and Research Challenges,''
+      \textit{IEEE Access}, 2019.
+
+    \bibitem{liu2022}
+      G.~Liu \textit{et al.},
+      ``Generating Realistic and Diverse Tests for Autonomous Vehicles,''
+      \textit{IEEE TDSC}, 2022.
+      (Adversarial sample generation methodology)
+
+    \bibitem{lundberg2017}
+      S.~M.~Lundberg, S.-I.~Lee,
+      ``A Unified Approach to Interpreting Model Predictions,''
+      \textit{NeurIPS}, 2017.
+      (\textbf{SHAP})
+
+    \bibitem{goodfellow2018}
+      I.~Goodfellow,
+      ``Attacking Machine Learning with Adversarial Examples,''
+      \textit{OpenAI Blog}, 2018.
+
+    \bibitem{mirsky2023}
+      Y.~Mirsky \textit{et al.},
+      ``The Threat of Offensive AI to Organizations,''
+      \textit{Computers \& Security}, vol.~124, 2023.
+
+  \end{thebibliography}
+\end{frame}
+
 \begin{frame}[plain]
   \vfill
   \centering
-  \textbf{\LARGE THANK YOU!}
+  \textbf{\LARGE THANK YOU!}\\
+  \vspace{12pt}
+  \small\textcolor{gray}{Demo: \url{https://ddos-gan.vercel.app}}
   \vfill
 \end{frame}
 
