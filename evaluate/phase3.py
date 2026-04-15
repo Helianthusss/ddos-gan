@@ -17,6 +17,7 @@ from sklearn.metrics import (
     confusion_matrix, classification_report
 )
 from torch.utils.data import DataLoader, TensorDataset
+from evaluate.metrics_utils import calculate_distribution_metrics
 
 from detector.mlp import MLPDetector
 
@@ -141,6 +142,11 @@ def evaluate_gan_quality(real_ddos: np.ndarray, fake_ddos: np.ndarray,
     mean_kl = float(np.mean(kl_scores))
     mean_ks = float(np.mean(ks_scores))
 
+    # New advanced metrics: Wasserstein & MMD
+    dist_metrics = calculate_distribution_metrics(real_ddos, fake_ddos)
+    mean_wd = dist_metrics["mean_wd"]
+    mmd = dist_metrics["mmd"]
+
     # Top 10 features với KL thấp nhất (fake giống real nhất)
     kl_per_feat = pd.DataFrame({
         "feature": feature_names,
@@ -151,6 +157,8 @@ def evaluate_gan_quality(real_ddos: np.ndarray, fake_ddos: np.ndarray,
 
     print(f"\n  Mean KL Divergence : {mean_kl:.4f}  (thấp = fake giống real)")
     print(f"  Mean KS Statistic  : {mean_ks:.4f}  (thấp = phân phối gần nhau)")
+    print(f"  Mean Wasserstein   : {mean_wd:.4f}  (khoảng cách Wasserstein)")
+    print(f"  MMD (RBF Kernel)   : {mmd:.4f}  (Maximum Mean Discrepancy)")
     print(f"\n  Top 10 features fake giống real nhất (KL thấp nhất):")
     print(kl_per_feat.head(10)[["feature","kl_div","ks_stat"]].to_string(index=False))
 
@@ -161,6 +169,8 @@ def evaluate_gan_quality(real_ddos: np.ndarray, fake_ddos: np.ndarray,
     return {
         "mean_kl": mean_kl,
         "mean_ks": mean_ks,
+        "mean_wd": mean_wd,
+        "mmd": mmd,
         "per_feature": kl_per_feat,
     }
 
@@ -233,6 +243,8 @@ def phase3_evaluation(round_id: int = 1):
     print(f"  {'FNR':<20} {m_baseline['fnr']:>12.4f} {m_adv['fnr']:>12.4f}")
     print(f"  {'Mean KL Div':<20} {'—':>12} {quality['mean_kl']:>12.4f}")
     print(f"  {'Mean KS Stat':<20} {'—':>12} {quality['mean_ks']:>12.4f}")
+    print(f"  {'Wasserstein':<20} {'—':>12} {quality['mean_wd']:>12.4f}")
+    print(f"  {'MMD (RBF)':<20} {'—':>12} {quality['mmd']:>12.4f}")
     print(f"{'='*58}")
 
     # Drop in F1
@@ -251,7 +263,12 @@ def phase3_evaluation(round_id: int = 1):
     all_metrics = {
         "baseline": m_baseline,
         "phase3"  : m_adv,
-        "quality" : {"mean_kl": quality["mean_kl"], "mean_ks": quality["mean_ks"]},
+        "quality" : {
+            "mean_kl": quality["mean_kl"], 
+            "mean_ks": quality["mean_ks"],
+            "mean_wd": quality["mean_wd"],
+            "mmd": quality["mmd"]
+        },
     }
     np.save(f"{EVAL_DIR}/phase3_metrics_r{round_id}.npy", all_metrics)
     print(f"\n  Saved → {EVAL_DIR}/phase3_metrics_r{round_id}.npy")

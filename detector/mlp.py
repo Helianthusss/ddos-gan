@@ -202,7 +202,7 @@ def main():
     best_path = train(model, train_loader, val_loader)
 
     # Load best và evaluate trên test set
-    model.load_state_dict(torch.load(best_path, map_location=DEVICE))
+    model.load_state_dict(torch.load(best_path, map_location=DEVICE, weights_only=True))
     final_eval(model, test_loader, phase="Phase 1 (Baseline)")
 
     # Save model config để load lại ở các phase sau

@@ -1,6 +1,6 @@
 \documentclass[aspectratio=169,11pt]{beamer}
 
-%% ── Theme ───────────────────────────────────────────────────────────────────
+%% ── Theme & Layout ──────────────────────────────────────────────────────────
 \usetheme{Madrid}
 \usecolortheme{seahorse}
 \setbeamertemplate{navigation symbols}{}
@@ -13,16 +13,15 @@
 \usepackage{colortbl}
 \usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 \usepackage{multirow}
 \usepackage{pifont}  % \ding{51}=checkmark, \ding{55}=cross
-\usepackage{hyperref}
-\hypersetup{colorlinks=true,linkcolor=primary,urlcolor=primary}
+\usepackage{url}
 \graphicspath{{figures/}}
 
-%% ── Colors ──────────────────────────────────────────────────────────────────
+%% ── Scientific Colors ───────────────────────────────────────────────────────
 \definecolor{primary}{RGB}{25,118,210}
 \definecolor{success}{RGB}{46,125,50}
 \definecolor{warning}{RGB}{230,81,0}
@@ -30,9 +29,9 @@
 \definecolor{gancolor}{RGB}{156,39,176}
 \definecolor{detcolor}{RGB}{33,150,243}
 \definecolor{rowblue}{RGB}{227,242,253}
-\definecolor{rowred}{RGB}{255,235,238}
 \definecolor{rowgreen}{RGB}{232,245,233}
 \definecolor{rowyellow}{RGB}{255,248,225}
+\definecolor{rowred}{RGB}{255,235,238}
 
 \setbeamercolor{frametitle}{bg=primary,fg=white}
 \setbeamercolor{title}{fg=primary}
@@ -44,670 +43,588 @@
 \newcommand{\NO}{\textcolor{danger}{\ding{55}}}
 
 %% ── Metadata ────────────────────────────────────────────────────────────────
-\title[GAN -- Sinh mẫu thử DDoS]
+\title[DDoS-GAN: Basic vs Adversarial]
       {\textbf{Dùng GAN để phát sinh mẫu thử DDoS}}
-
 \author[Nhóm 3 SV]{%
   \small
   \begin{tabular}{ll}
-    1. Trần Đức Anh       & \textnormal{MHV: 250101005} \\
-    2. Huỳnh Ngọc Hưng    & \textnormal{MHV: 250101027} \\
-    3. Trần Thanh Dũng    & \textnormal{MHV: 250201053} \\
+    Trần Đức Anh & \textnormal{MHV: 250101005} \\
+    Huỳnh Ngọc Hưng & \textnormal{MHV: 250101027} \\
+    Trần Thanh Dũng & \textnormal{MHV: 250201053} \\
   \end{tabular}\\[4pt]
-  \textnormal{\small\textit{Giảng viên hướng dẫn:} \textbf{PGS.TS. Nguyễn Tấn Cầm}}
+  \textit{Giảng viên hướng dẫn:} \textbf{PGS.TS. Nguyễn Tấn Cầm}
 }
-
-\institute[]{}
-
 \date{\today}
 
-%% ─────────────────────────────────────────────────────────────────────────────
+%% ── LUỒNG SLIDE ─────────────────────────────────────────────────────────────
+%% Phần 1 — Giới thiệu  : Title, TOC, Bối cảnh, Mục tiêu
+%% Phần 2 — Phương pháp : Tổng quan → Dữ liệu (đẩy lên) → Hướng A → Hướng B
+%% Phần 3 — Thực nghiệm : Độ đo → Kết quả A → Kết quả B → So sánh
+%% Phần 4 — Demo
+%% Phần 5 — Kết luận
+%% Phần 6 — Tài liệu tham khảo  (Thank you nằm trong frame này)
+
 \begin{document}
 
-%% ── TITLE ────────────────────────────────────────────────────────────────────
-\begin{frame}
+%% =============================================================================
+\section{Giới thiệu đề tài}
+%% =============================================================================
+
+%% ── 1. TITLE PAGE ────────────────────────────────────────────────────────────
+\begin{frame}[plain]
   \titlepage
 \end{frame}
 
-%% ── OUTLINE ──────────────────────────────────────────────────────────────────
+%% ── 2. OUTLINE ───────────────────────────────────────────────────────────────
+%% Ghi chú: tên section KHÔNG chứa số thứ tự để tránh lỗi hiển thị "44. Demo".
+%% Beamer tự động đánh số section trong TOC.
 \begin{frame}{Nội dung báo cáo}
-  \tableofcontents
-\end{frame}
-
-%% =============================================================================
-\section{1. Giới thiệu}
-%% =============================================================================
-
-\begin{frame}{Bối cảnh \& Động lực}
   \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{alertblock}{Vấn đề}
-        \begin{itemize}\setlength\itemsep{4pt}
-          \item DDoS attacks ngày càng tinh vi
-          \item IDS dựa ML cần \textbf{dữ liệu huấn luyện đa dạng}
-          \item Dữ liệu DDoS thực: khó thu thập, mất cân bằng
-        \end{itemize}
-      \end{alertblock}
-      \vspace{6pt}
-      \begin{block}{Câu hỏi nghiên cứu}
-        Liệu GAN có thể sinh ra fake DDoS traffic \textbf{đủ thực} để:
-        \begin{enumerate}\setlength\itemsep{3pt}
-          \item[\textbf{A.}] Test \& cải thiện IDS?
-          \item[\textbf{B.}] Bypass detector hiện tại?
-        \end{enumerate}
-      \end{block}
+    \begin{column}{0.48\textwidth}
+      \tableofcontents[sections={1-3}]
     \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{exampleblock}{Đóng góp chính}
-        \begin{enumerate}\setlength\itemsep{4pt}
-          \item \textbf{Hướng A}: Pure WGAN sinh mẫu DDoS realistic
-          \item \textbf{Hướng B}: Arms race GAN $\Leftrightarrow$ Detector (2 rounds)
-          \item Đề xuất \textbf{Validity Score} -- metric mới đánh giá tính realistic
-          \item SHAP explainability phân tích feature importance
-        \end{enumerate}
-      \end{exampleblock}
+    \begin{column}{0.48\textwidth}
+      \tableofcontents[sections={4-6}]
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Dataset: CIC-DDoS2019}
+%% ── 3. BỐI CẢNH ──────────────────────────────────────────────────────────────
+%% Slide này tập trung THUẦN TÚY vào sự nguy hiểm của DDoS và thất bại của
+%% IDS truyền thống. Biểu đồ Arms Race được giữ lại ở phần Kết quả (Slide 21)
+%% để tạo hiệu ứng kịch tính.
+\begin{frame}{Bối cảnh: Sự nguy hiểm của tấn công DDoS}
   \begin{columns}[T]
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Tổng quan}
+    \begin{column}{0.50\textwidth}
+      \begin{alertblock}{Tình hình thực tế}
         \small
-        \begin{tabular}{ll}
-          Nguồn & Canadian Institute for Cybersecurity \\
-          \# Features & 80 (sau preprocessing) \\
-          Train set & 68,380 samples \\
-          Test set & 14,653 samples/class \\
-        \end{tabular}
-      \end{block}
-      \vspace{2pt}
-      \begin{block}{Phân loại features (novel)}
-        \footnotesize
-        \begin{itemize}\setlength\itemsep{2pt}
-          \item \textcolor{danger}{\textbf{16 Functional:}} Protocol, Flag counts, Header Length, Flow Duration\\
-          \textit{$\to$ Định nghĩa bản chất DDoS}
-          \item \textcolor{detcolor}{\textbf{64 Non-functional:}} Packet stats, IAT, Byte counts\\
-          \textit{$\to$ Biến đổi được mà không mất DDoS behavior}
+        \begin{itemize}\setlength\itemsep{4pt}
+          \item DDoS không chỉ là Volumetric traffic (TCP/UDP flood) mà
+                còn nhắm vào tầng ứng dụng (HTTP/HTTPS).
+          \item Các cuộc tấn công \textbf{thay đổi hình thái liên tục}
+                để vượt qua firewall và IDS truyền thống.
+          \item Năm 2023, tấn công DDoS tăng \textbf{200\%} so với năm
+                trước (Cloudflare DDoS Report 2023).
         \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \begin{exampleblock}{Ví dụ phân loại features}
-        \footnotesize
-        \begin{tabular}{lp{3cm}}
-          \toprule
-          \textbf{Loại} & \textbf{Feature} \\
-          \midrule
-          \textcolor{danger}{Functional} & SYN Flag Count \\
-          \textcolor{danger}{Functional} & Protocol \\
-          \textcolor{danger}{Functional} & Fwd Header Length \\
-          \textcolor{danger}{Functional} & Flow Duration \\
-          \midrule
-          \textcolor{detcolor}{Non-functional} & Flow Bytes/s \\
-          \textcolor{detcolor}{Non-functional} & Packet Length Mean \\
-          \textcolor{detcolor}{Non-functional} & Flow IAT Std \\
-          \bottomrule
-        \end{tabular}
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-%% =============================================================================
-\section{2. Phương pháp đề xuất}
-%% =============================================================================
-
-\begin{frame}{Kiến trúc: WGAN-GP + MLP Detector}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{block}{Generator (G)}
-        \footnotesize
-        \begin{itemize}\setlength\itemsep{1pt}
-          \item Input: $z \sim \mathcal{N}(0, I_{64})$
-          \item Layers: $64 \to 128 \to 256 \to 256 \to 128 \to 80$
-          \item Output: Fake DDoS sample (80 features)
-        \end{itemize}
-      \end{block}
-      \vspace{2pt}
-      \begin{block}{Critic (C) -- Wasserstein}
-        \footnotesize
-        \begin{itemize}\setlength\itemsep{1pt}
-          \item Layers: $80 \to 256 \to 128 \to 64 \to 1$
-          \item Loss: Wasserstein + Gradient Penalty ($\lambda_{GP}{=}10$)
-        \end{itemize}
-      \end{block}
-      \vspace{2pt}
-      \begin{block}{MLP Detector}
-        \footnotesize
-        \begin{itemize}\setlength\itemsep{1pt}
-          \item Layers: $80 \to 256 \to 128 \to 64 \to 1$
-          \item Activation: ReLU + Sigmoid, Dropout 0.3
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \begin{alertblock}{Loss Function Generator}\vspace{-2pt}
-        \textbf{Phase A:}\hspace{4pt}
-        $\mathcal{L}_G = -\mathbb{E}[C(G(z))] + \lambda_c \mathcal{L}_{con}$
-        \vspace{2pt}
-
-        \textbf{Phase B:}\vspace{-8pt}
-        \begin{align*}
-          \mathcal{L}_G = &-\mathbb{E}[C(G(z))] + \lambda_{adv}\,\mathrm{BCE}\\
-                         &+ \lambda_c\,\mathrm{MSE}(G(z)[F], \mu_F)
-        \end{align*}
-        \vspace{-12pt}
-
-        \scriptsize
-        $F$: functional features, $\mu_F$: mean real DDoS\\
-        $\lambda_{adv}{=}1.0$, $\lambda_c{=}5.0$
       \end{alertblock}
     \end{column}
+    \begin{column}{0.46\textwidth}
+      %% Diagram: Signature-based IDS thất bại trước Zero-day DDoS
+      \begin{tikzpicture}[
+        node distance=0.7cm,
+        box/.style={rectangle, draw, rounded corners, thick,
+                    minimum width=3.0cm, minimum height=0.7cm,
+                    font=\small, align=center},
+        bad/.style={box, draw=danger,  fill=danger!8},
+        ok/.style ={box, draw=success, fill=success!8},
+        arr/.style={-Stealth, thick}
+      ]
+        \node[bad] (atk)  {DDoS Zero-day};
+        \node[bad, below=of atk] (sig)
+              {\textbf{Signature IDS}\\\footnotesize không có chữ ký này};
+        \node[bad, below=of sig] (byp)
+              {\textcolor{danger}{\textbf{\ding{55}}} Bypass hoàn toàn};
+        \node[ok,  below=0.5cm of byp] (ml)
+              {\textbf{ML-based IDS}\\\footnotesize học pattern từ data};
+        \node[box, draw=warning, fill=warning!8, below=of ml] (gap)
+              {\textcolor{warning}{\textbf{?}} Cần dữ liệu mới};
+
+        \draw[arr, danger] (atk) -- (sig);
+        \draw[arr, danger] (sig) -- (byp);
+        \draw[arr, primary] (atk) to[bend right=40] (ml);
+        \draw[arr, warning] (ml) -- (gap);
+      \end{tikzpicture}
+    \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Pipeline tổng thể}
+%% ── 4. MỤC TIÊU & GIẢI PHÁP ─────────────────────────────────────────────────
+\begin{frame}{Mục tiêu \& Giải pháp đề xuất}
+  \begin{itemize}\setlength\itemsep{8pt}
+    \item \textbf{Mục tiêu}: Xây dựng một framework có thể \textbf{tự động
+          sinh dữ liệu DDoS với các biến thể mới} phục vụ kiểm thử IDS.
+    \item \textbf{Giải pháp}: Sử dụng Generative Adversarial Networks (GAN)
+          phối hợp với các mô hình Anomaly Detection.
+    \item \textbf{Tính mới}: So sánh hai hướng tiếp cận:
+          \textbf{Học phân phối thực (Hướng A)} và
+          \textbf{Học đối kháng đánh lừa (Hướng B)}.
+  \end{itemize}
+  \vspace{10pt}
+  \begin{block}{Output kỳ vọng}
+    Dữ liệu sinh ra phải đảm bảo:
+    (1)~Tính mạng --- Network Validity và
+    (2)~Tính đối kháng --- Adversarial Power.
+  \end{block}
+\end{frame}
+
+%% =============================================================================
+\section{Phương pháp đề xuất}
+%% =============================================================================
+
+%% ── 5. SƠ ĐỒ TỔNG QUAN ──────────────────────────────────────────────────────
+\begin{frame}{Sơ đồ tổng quan: 2 hướng tiếp cận A và B}
   \centering
   \begin{tikzpicture}[
-    node distance=0.6cm and 1.8cm,
-    box/.style={draw, rounded corners=4pt, minimum width=2.8cm,
-                minimum height=0.65cm, font=\small, align=center, fill=white},
-    arrow/.style={-Stealth, thick},
-    label/.style={font=\scriptsize, align=center}
+    node distance=1.5cm,
+    box/.style={rectangle, draw=primary, fill=primary!5, thick,
+                rounded corners, minimum width=3.5cm, minimum height=1cm,
+                font=\small, align=center},
+    arrow/.style={-Stealth, thick, gray}
   ]
-    %% Row 1: Data + Phase A
-    \node[box, fill=gray!15] (data) {CIC-DDoS2019};
-    \node[box, fill=gancolor!25, draw=gancolor, below=0.7cm of data] (ga)
-      {WGAN-GP\\Pure (Round 0)};
-    \node[box, fill=gancolor!15, draw=gancolor, below=0.6cm of ga] (fake0)
-      {Fake DDoS\\(Realistic)};
+    \node[box] (data) {CIC-DDoS2019\\Dataset\\{\tiny 80 features, 68K mẫu}};
+    \node[box, right=of data, fill=gancolor!10] (ga)
+          {\textbf{Hướng A}\\Sinh mẫu bằng WGAN};
+    \node[box, below=1.2cm of ga, fill=detcolor!10] (gb)
+          {\textbf{Hướng B}\\Huấn luyện đối kháng};
 
-    %% Phase B nodes
-    \node[box, fill=detcolor!25, draw=detcolor, right=2.5cm of data] (d1)
-      {Detector v1\\(MLP Baseline)};
-    \node[box, fill=gancolor!25, draw=gancolor, below=0.7cm of d1] (gb)
-      {WGAN-GP\\Adversarial R1};
-    \node[box, fill=detcolor!25, draw=detcolor, right=1.8cm of d1] (d2)
-      {Detector v2\\(Adv. Training)};
-    \node[box, fill=gancolor!25, draw=gancolor, below=0.7cm of d2] (gc)
-      {WGAN-GP\\Adversarial R2};
+    \draw[arrow] (data) -- (ga);
+    \draw[arrow] (ga)   -- (gb);
 
-    %% Arrows Phase A
-    \draw[arrow, gancolor] (data) -- node[left, label]{} (ga);
-    \draw[arrow, gancolor] (ga)   -- node[right, label]{Round 0} (fake0);
-
-    %% Arrows Phase B
-    \draw[arrow, detcolor] (data) -- (d1);
-    \draw[arrow]           (d1)   -- node[left, label]{attack} (gb);
-    \draw[arrow, gancolor] (gb.east) to[bend left=20]
-                           node[below, label]{adv. train} (d2.south);
-    \draw[arrow, detcolor] (d1)   -- node[above, label]{Phase 4} (d2);
-    \draw[arrow]           (d2)   -- node[right, label]{attack R2} (gc);
-
-    %% Phase labels
-    \node[above=0.1cm of ga, font=\tiny\bfseries, gancolor] {Huong A};
-    \node[above=0.1cm of d1, font=\tiny\bfseries, detcolor] {Huong B};
+    \node[right=0.25cm of ga, font=\tiny\bfseries, gancolor] {Học phân phối};
+    \node[right=0.25cm of gb, font=\tiny\bfseries, detcolor] {Học lỗ hổng IDS};
   \end{tikzpicture}
-\end{frame}
-
-%% =============================================================================
-\section{3. Hướng A}
-%% =============================================================================
-
-\begin{frame}{Hướng A: Validity Score -- Metric mới đề xuất}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{block}{Định nghĩa Validity Score}
-        \% fake samples có \textbf{tất cả} functional features trong valid range của real DDoS:
-        \[
-          V = \frac{1}{N}\sum_{i=1}^{N} \prod_{f \in F} \mathbf{1}[x_i^f \in [lo_f, hi_f]]
-        \]
-        Valid range: $[P_1, P_{99}]$ của real DDoS traffic
-      \end{block}
-      \vspace{6pt}
-      \begin{alertblock}{Kết quả tổng thể}
-        \centering \large
-        \textbf{Overall Validity = 0\%}\\
-        \small (AND condition: 11 features có valid range\\
-        cực hẹp sau normalization)
-      \end{alertblock}
-    \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{exampleblock}{Per-feature Validity ($\lambda_c = 5.0$, Round 0)}
-        \footnotesize
-        \begin{tabular}{lc}
-          \toprule
-          \textbf{Feature} & \textbf{Validity} \\
-          \midrule
-          Flow Duration     & \textcolor{success}{\textbf{100.0\%}} \\
-          ACK Flag Count    & \textcolor{success}{\textbf{99.9\%}}  \\
-          Fwd URG Flags     & \textcolor{success}{\textbf{99.9\%}}  \\
-          Bwd PSH Flags     & \textcolor{success}{\textbf{99.9\%}}  \\
-          URG Flag Count    & \textcolor{success}{\textbf{99.7\%}}  \\
-          \midrule
-          Protocol          & \textcolor{danger}{0.0\%} \\
-          SYN Flag Count    & \textcolor{danger}{0.0\%} \\
-          Fwd Header Length & \textcolor{danger}{0.0\%} \\
-          ... (8 others)    & \textcolor{danger}{0.0\%} \\
-          \bottomrule
-        \end{tabular}
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-%% =============================================================================
-\section{4. Hướng B}
-%% =============================================================================
-
-\begin{frame}{Hướng B: AUC cao -- Ý nghĩa vs F1=0}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{alertblock}{Hiện tượng thú vị}
-        Round 2: \textbf{F1 = 0.0000} nhưng \textbf{AUC = 0.9888}
-      \end{alertblock}
-      \vspace{6pt}
-      \begin{block}{Giải thích}
-        \begin{itemize}\setlength\itemsep{4pt}
-          \item AUC đo \textit{ranking}: detector vẫn gán xác suất DDoS cao hơn cho real DDoS so với fake
-          \item Nhưng \textbf{tất cả fake samples} có $P < 0.5$ $\to$ phân loại là BENIGN
-          \item GAN không cần tạo fake "giống real", chỉ cần \textbf{đẩy samples vào vùng BENIGN} của feature space
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{exampleblock}{Evasion Strategy}
-        \centering
-        \begin{tikzpicture}[scale=0.85]
-          \draw[thick] (0,0) rectangle (4,3);
-          \fill[success!20] (0,0) rectangle (4,1.2);
-          \fill[danger!20]  (0,1.2) rectangle (4,3);
-          \draw[dashed, thick] (0,1.2) -- (4,1.2)
-            node[right, font=\tiny]{threshold=0.5};
-          \node[font=\tiny, danger] at (2,2.2) {Real DDoS (P$>$0.5)};
-          \node[font=\tiny, success] at (2,0.6) {BENIGN region};
-          % Fake samples dots
-          \foreach \x/\y in {0.5/0.3,1.2/0.5,2.0/0.4,2.8/0.6,3.5/0.3}
-            \fill[gancolor] (\x,\y) circle (3pt);
-          \node[font=\tiny, gancolor] at (2,-0.25)
-            {Fake DDoS (P$<$0.5) $\leftarrow$ GAN pushes here};
-        \end{tikzpicture}
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-%% =============================================================================
-\section{5. Thực nghiệm}
-%% =============================================================================
-
-\begin{frame}{Hướng A: Validity Heatmap -- Per-feature $\times$ Round}
-  \begin{center}
-    \includegraphics[width=0.97\textwidth,height=0.60\textheight,keepaspectratio]{fig_validity_heatmap}
-  \end{center}
-  \vspace{-4pt}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{alertblock}{\small Tại sao 11 features = 0\%?}\vspace{-2pt}
-        \small Valid range sau normalization cực hẹp ($\min{\approx}\max$) -- GAN continuous float không thể rơi vào.\\
-        \textit{Không phải lỗi GAN mà là đặc tính data.}
-      \end{alertblock}
-    \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{exampleblock}{\small Key finding + Hướng cải thiện}\vspace{-2pt}
-        \small Round 0 giống real nhất (KL=1.49 vs 1.61 Adv).\\
-        Fix: Post-processing snap về mode + Conditional GAN.
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Hướng A: Phân phối các features --- Real vs Fake DDoS}
-  \begin{center}
-    \includegraphics[width=0.95\textwidth,height=0.74\textheight,keepaspectratio]{fig_distribution}
-  \end{center}
-  \vspace{-4pt}
-  \centering\footnotesize
-  Pure GAN (tím) tiệm cận Real DDoS (xanh) hơn Adversarial GAN (đỏ)
-\end{frame}
-
-\begin{frame}{Hướng A: Per-feature Validity --- So sánh 3 round}
-  \begin{center}
-    \includegraphics[width=0.97\textwidth,height=0.76\textheight,keepaspectratio]{fig_validity}
-  \end{center}
-  \vspace{-4pt}
-  \centering\footnotesize
-  5 features đạt $\approx100\%$ validity (Round 0); Adversarial rounds giảm validity do conflict với bypass objective
-\end{frame}
-
-\begin{frame}{Hướng B: Kết quả Arms Race -- Bảng tổng hợp}
-  \footnotesize
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{p{4.2cm}lccccc}
-    \toprule
-    \textbf{Phase} & \textbf{Detector} & \textbf{F1} & \textbf{AUC} & \textbf{FNR} & \textbf{FoolRate} \\
-    \midrule
-    \rowcolor{rowblue}
-    Phase 1 -- Baseline          & MLP v1 & \textbf{0.9996} & 1.0000 & 0.0003 & -- \\
-    \rowcolor{rowred}
-    Phase 3 -- GAN Round 1       & MLP v1 & \textcolor{danger}{\textbf{0.0000}} & 0.9942 & 1.0000 & \textbf{1.0000} \\
-    \rowcolor{rowgreen}
-    Phase 4 -- MLP v2 (real)     & MLP v2 & \textbf{0.9996} & 1.0000 & 0.0003 & -- \\
-    \rowcolor{rowgreen}
-    Phase 4 -- MLP v2 (adv set)  & MLP v2 & \textbf{0.9998} & 1.0000 & 0.0000 & -- \\
-    \rowcolor{rowred}
-    Phase 5 -- GAN Round 2       & MLP v2 & \textcolor{danger}{\textbf{0.0000}} & 0.9888 & 1.0000 & \textbf{1.0000} \\
-    \rowcolor{rowyellow}
-    Transferability -- RF (R1)   & RF     & 0.5325 & 0.9998 & 0.6371 & 0.6371 \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{4pt}
-  \begin{center}
-    \includegraphics[width=0.82\textwidth,height=0.38\textheight,keepaspectratio]{fig_timeline}
-  \end{center}
-\end{frame}
-
-\begin{frame}{Hướng B: FoolRate qua các Round}
-  \begin{columns}[T]
-    \begin{column}{0.58\textwidth}
-      \begin{center}
-        \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{fig_armsrace}
-      \end{center}
-    \end{column}
-    \begin{column}{0.39\textwidth}
-      \begin{block}{Nhận xét}
-        \begin{itemize}\setlength\itemsep{5pt}
-          \item MLP FoolRate = \textbf{100\%} cả 2 rounds
-          \item RF FoolRate tăng $63.7\%\! \to\! 87.2\%$\\ Transferability cải thiện
-          \item GAN học patterns tổng quát hơn theo round
-        \end{itemize}
-      \end{block}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Hướng B: Transferability -- GAN bypass cross-architecture}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{block}{Thí nghiệm Transferability}
-        GAN được train \textbf{chỉ} trên MLP Detector,\\ sau đó test trên \textbf{Random Forest} -- kiến trúc hoàn toàn khác
-      \end{block}
-      \vspace{6pt}
-      \small
-      \begin{tabular}{lccc}
-        \toprule
-        & \multicolumn{2}{c}{\textbf{FoolRate}} \\
-        \cmidrule{2-3}
-        \textbf{Detector} & \textbf{Round 1} & \textbf{Round 2} \\
-        \midrule
-        MLP v1 (target R1) & 1.0000 & 0.0008 \\
-        MLP v2 (target R2) & --     & 1.0000 \\
-        \textbf{RF (unseen)} & \textbf{0.6371} & \textbf{0.8716} \\
-        \bottomrule
-      \end{tabular}
-    \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{alertblock}{Findings}
-        \begin{itemize}\setlength\itemsep{4pt}
-          \item RF FoolRate \textbf{tăng} từ $63.7\% \to 87.2\%$ (Round 1 $\to$ 2)
-          \item GAN round 2 học được features tổng quát hơn khi phải bypass detector mạnh hơn
-          \item \textbf{Rủi ro thực tế:} Adversarial samples có thể bypass nhiều loại IDS, không chỉ target
-          \item GAN Round 2 chuyên biệt hóa: MLP v1 FoolRate giảm xuống 0.08\%
-        \end{itemize}
-      \end{alertblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Hướng B: KL Divergence --- Chất lượng phân phối}
-  \begin{center}
-    \includegraphics[width=0.97\textwidth,height=0.76\textheight,keepaspectratio]{fig_kl}
-  \end{center}
-  \vspace{-4pt}
-  \centering\footnotesize
-  Top 10 features giống real nhất (KL thấp nhất). Round 0 có Mean KL thấp hơn --- fake gần real DDoS hơn.
-\end{frame}
-
-\begin{frame}{SHAP: Giải thích thay đổi của Detector}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{block}{Mục tiêu SHAP}
-        So sánh feature importance của Detector v1 vs v2 sau adversarial training:\\
-        \textit{Liệu v2 có chú trọng hơn vào functional features?}
-      \end{block}
-      \vspace{6pt}
-      \begin{tabular}{lccc}
-        \toprule
-        \textbf{Group} & \textbf{v1} & \textbf{v2} & $\mathbf{\Delta}$ \\
-        \midrule
-        Functional     & 0.4794 & 0.4458 & \textcolor{danger}{$-$0.034} \\
-        Non-functional & 0.4660 & 0.3998 & \textcolor{danger}{$-$0.066} \\
-        \bottomrule
-      \end{tabular}
-    \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{alertblock}{Finding}
-        \begin{itemize}\setlength\itemsep{4pt}
-          \item \textbf{Không có shift} từ non-functional sang functional features
-          \item Cả hai group \textbf{giảm} sau adv. training -- model trở nên \textit{less confident} tổng thể
-          \item GAN bypass qua \textbf{non-functional features} (consistent với Validity=0)
-        \end{itemize}
-      \end{alertblock}
-      \vspace{4pt}
-      \begin{exampleblock}{Implication}
-        Để detector mạnh hơn, cần penalize GAN khi modify \textbf{functional features} -- đây là lý do cần constraint loss $\mathcal{L}_{con}$
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{SHAP: Biểu đồ Feature Importance}
-  \begin{columns}[T]
-    \begin{column}{0.62\textwidth}
-      \begin{center}
-        \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{fig_shap}
-      \end{center}
-    \end{column}
-    \begin{column}{0.35\textwidth}
-      \begin{alertblock}{Finding}
-        \begin{itemize}\setlength\itemsep{5pt}
-          \item Cả hai group \textbf{giảm} sau adv. training
-          \item Không có shift\\ non-func $\to$ functional
-          \item Model \textit{less confident} tổng thể
-        \end{itemize}
-      \end{alertblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-%% =============================================================================
-\section{6. Kết luận}
-%% =============================================================================
-
-\begin{frame}{Tóm tắt kết quả}
-  \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      \begin{exampleblock}{Đã đạt được}
-        \begin{itemize}\setlength\itemsep{4pt}
-          \item[\YES] \textbf{Hướng A}: 5/16 functional features\\validity $>$ 99\% với $\lambda_c=5.0$
-          \item[\YES] \textbf{Hướng B}: GAN bypass hoàn toàn\\cả Detector v1 \& v2 (F1 = 0.0)
-          \item[\YES] \textbf{Adv. Training}: Detector v2 phục hồi\\(F1=0.9998 trên adversarial set)
-          \item[\YES] \textbf{Transferability}: RF FoolRate $63.7\% \to 87.2\%$
-          \item[\YES] \textbf{SHAP}: Phân tích attention shift
-          \item[\YES] \textbf{Validity Score}: Metric mới đề xuất
-        \end{itemize}
-      \end{exampleblock}
-    \end{column}
-    \begin{column}{0.47\textwidth}
-      \begin{alertblock}{Hạn chế \& Hướng phát triển}
-        \begin{itemize}\setlength\itemsep{4pt}
-          \item[\NO] Overall Validity = 0 do AND condition\\
-                \small $\to$ Cần post-processing hoặc Conditional GAN
-          \item[\NO] SHAP không thấy attention shift\\
-                \small $\to$ Cần thêm epochs / stronger adv. training
-          \item[\NO] Chỉ 1 dataset (CIC-DDoS2019)\\
-                \small $\to$ Thêm UNSW-NB15, CICIDS2017
-          \item[\NO] Chưa so sánh với FGSM, PGD\\
-                \small $\to$ Cần baseline comparison cho paper
-        \end{itemize}
-      \end{alertblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Kết luận}
-  \begin{block}{Pipeline hoàn chỉnh đã triển khai}
-    \centering
-    \small
-    Data $\to$ \textcolor{detcolor}{\textbf{Detector v1}} $\xrightarrow{\text{bypass}}$
-    \textcolor{gancolor}{\textbf{GAN Round 1}} $\xrightarrow{\text{adv. train}}$
-    \textcolor{detcolor}{\textbf{Detector v2}} $\xrightarrow{\text{bypass}}$
-    \textcolor{gancolor}{\textbf{GAN Round 2}}
-  \end{block}
-
-  \vspace{10pt}
-  \begin{itemize}\setlength\itemsep{6pt}
-    \item \textbf{Đề tài hoàn thành:} Pipeline sinh mẫu DDoS bằng GAN kết hợp arms race với detector
-    \item \textbf{Finding chính:} GAN bypass hoàn toàn MLP detector (F1: $0.9996 \to 0.0000$); Transferability cross-architecture đạt \textbf{87.2\%}
-    \item \textbf{Validity Score:} Metric mới -- chưa có paper nào áp dụng trên CIC-DDoS2019
-    \item \textbf{Hướng tiếp theo:} Conditional GAN + constraint mạnh hơn để tăng Validity $> 0$ toàn bộ
+  \vspace{8pt}
+  \begin{itemize}
+    \item \small \textbf{Hướng A}: Giải pháp cơ bản --- bắt chước
+          phân phối dữ liệu thật tốt nhất có thể.
+    \item \small \textbf{Hướng B}: Giải pháp nâng cấp --- tối ưu hóa
+          khả năng lừa máy học (Bypass).
   \end{itemize}
 \end{frame}
 
 %% =============================================================================
-\section{7. Demo}
+\subsection{Dữ liệu \& Tiền xử lý}
 %% =============================================================================
 
-\begin{frame}{Live Demo: Nexus Sentinel}
+%% ── 6. BỘ DỮ LIỆU ───────────────────────────────────────────────────────────
+%% Đặt NGAY SAU sơ đồ tổng quan để người xem hiểu "80 features từ đâu ra"
+%% trước khi đọc kiến trúc Generator/Critic ở các slide tiếp theo.
+\begin{frame}{Bộ dữ liệu huấn luyện: CIC-DDoS2019}
   \begin{columns}[T]
-    \begin{column}{0.52\textwidth}
-      \begin{block}{Web Application}
-        \begin{itemize}\setlength\itemsep{5pt}
-          \item \textbf{Frontend}: Next.js 16 + Recharts --- deploy trên \textbf{Vercel}
-          \item \textbf{Backend}: FastAPI + PyTorch --- deploy trên \textbf{Render (free)}
-          \item Real-time inference: GAN generate $\to$ IDS detect
+    \begin{column}{0.50\textwidth}
+      \begin{block}{Nguồn: CIC-DDoS2019}
+        \small
+        Sử dụng file \texttt{Friday-WorkingHours} tập trung vào:
+        \begin{itemize}
+          \item Tấn công Portmap, LDAP, MSSQL\ldots
+          \item Gói tin Benign chuẩn từ hạ tầng UNB.
+          \item \textbf{80 đặc trưng mạng} sau tiền xử lý
+                (flow-level features).
         \end{itemize}
       \end{block}
-      \vspace{6pt}
-      \begin{exampleblock}{Batch Mode --- Arms Race Statistics}
-        \footnotesize
-        \setlength{\tabcolsep}{4pt}
-        \begin{tabular}{lccc}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{exampleblock}{Thống kê mẫu (sau cân bằng)}
+        \small
+        \begin{tabular}{lr}
           \toprule
-          \textbf{GAN Round} & \textbf{N} & \textbf{IDS} & \textbf{Bypass Rate} \\
+          Lớp & Số lượng mẫu \\
           \midrule
-          Pure GAN (R0)   & 100 & v1 (Baseline) & 0\%     \\
-          Adv. GAN (R2)   & 100 & v1 (Baseline) & \textcolor{danger}{\textbf{100\%}}   \\
+          Benign & 34{,}190 \\
+          DDoS   & 34{,}190 \\
           \midrule
-          Pure GAN (R0)   & 100 & v2 (Hardened) & \textcolor{warning}{\textbf{$\sim$0\%}} \\
-          Adv. GAN (R2)   & 100 & v2 (Hardened) & \textcolor{danger}{\textbf{100\%}}   \\
+          Tổng   & 68{,}380 \\
           \bottomrule
         \end{tabular}
       \end{exampleblock}
-    \end{column}
-    \begin{column}{0.45\textwidth}
-      \begin{alertblock}{Demo URL}
-        \centering\small
-        \textbf{\url{https://ddos-gan.vercel.app}}\\
-        \vspace{6pt}
+      \vspace{4pt}
+      \begin{alertblock}{\footnotesize Lưu ý: Imbalanced Data}
         \footnotesize
-        API Docs: \url{https://ddos-ganddos-gan-api.onrender.com/docs}
+        Trong thực tế, tỉ lệ Benign/DDoS thường là \textbf{hàng nghìn:1}.
+        Tỉ lệ 50--50 giúp GAN học tốt hơn nhưng không phản ánh môi trường
+        production thực tế.
       \end{alertblock}
-      \vspace{6pt}
-      \begin{block}{Tính năng}
-        \footnotesize
-        \begin{itemize}\setlength\itemsep{3pt}
-          \item \textbf{Single Payload}: Generate 1 sample $\to$ detect
-          \item \textbf{Radar chart}: Visualize top 15 features
-          \item \textbf{Batch Mode}: Generate N samples ($N \le 500$)
-          \item \textbf{Bypass rate}: So sánh R0 vs R2 real-time
-          \item \textbf{Distribution chart}: Threat score histogram
-          \item Chọn v1 / v2 detector độc lập
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ── 7. TIỀN XỬ LÝ ───────────────────────────────────────────────────────────
+\begin{frame}{Tiền xử lý dữ liệu chuyên sâu}
+  \begin{itemize}\setlength\itemsep{6pt}
+    \item \textbf{Lọc đặc trưng}: Loại bỏ Flow ID, IP nguồn/đích để
+          tránh model học vẹt các địa chỉ tĩnh.
+    \item \textbf{Robust Scaling}:
+      \[ X' = \frac{X - Q_2(X)}{Q_3(X) - Q_1(X)} \]
+      Giúp mô hình xử lý tốt các gói tin DDoS có burst cực lớn (outliers).
+    \item \textbf{Label Encoding}: Chuyển các giao thức thành số định danh
+          phù hợp cho Neural Network.
+  \end{itemize}
+  \vspace{6pt}
+  \begin{exampleblock}{Kết quả sau tiền xử lý}
+    \small
+    Mỗi flow được biểu diễn bằng một \textbf{vector 80 chiều} ---
+    đây chính là kích thước output của Generator và input của Critic
+    trong các slide tiếp theo.
+  \end{exampleblock}
+\end{frame}
+
+%% =============================================================================
+\subsection{Hướng A --- Giải pháp cơ bản}
+%% =============================================================================
+
+%% ── 8. KIẾN TRÚC A: NGUYÊN LÝ ───────────────────────────────────────────────
+\begin{frame}{Hướng A: Sinh mẫu bằng WGAN-GP}
+  \begin{block}{Nguyên lý WGAN (Wasserstein GAN)}
+    Thay thế hàm loss Jensen-Shannon bằng Wasserstein Distance để tránh
+    biến mất gradient và mode collapse.
+  \end{block}
+  \vspace{10pt}
+  \begin{itemize}
+    \item \textbf{Gradient Penalty (GP)}: Ép Lipschitz constraint thông
+          qua việc phạt định mức gradient trên trung bình các mẫu thực
+          và giả.
+    \item \textbf{Ổn định}: Giúp Generator học được các phân phối đặc
+          trưng sắc nét hơn của traffic mạng.
+  \end{itemize}
+\end{frame}
+
+%% ── 9. KIẾN TRÚC A: GENERATOR ────────────────────────────────────────────────
+\begin{frame}{Hướng A: Kiến trúc Generator (G)}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Thông số kỹ thuật}
+        \small
+        \begin{itemize}
+          \item Input: Noise $z \in \mathbb{R}^{64}$.
+          \item Kiến trúc: 4-layer Fully Connected.
+          \item Kích thước: $64 \to 128 \to 256 \to 256$.
+          \item Activation: ReLU (ẩn), Tanh (output).
         \end{itemize}
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Cơ chế hoạt động}
+        \small
+        Generator biến đổi vector nhiễu ngẫu nhiên thành một
+        \textbf{vector 80 chiều} (tương ứng 80 đặc trưng sau tiền xử lý)
+        mang các đặc tính thống kê giống hệt một gói tin DDoS thực thụ.
       \end{block}
     \end{column}
   \end{columns}
 \end{frame}
 
-%% =============================================================================
-\section{8. Tài liệu tham khảo}
-%% =============================================================================
-
-\begin{frame}[allowframebreaks]{Tài liệu tham khảo}
-  \footnotesize
-  \begin{thebibliography}{99}
-
-    \bibitem{goodfellow2014}
-      I.~Goodfellow \textit{et al.},
-      ``Generative Adversarial Nets,''
-      \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2014.
-
-    \bibitem{arjovsky2017}
-      M.~Arjovsky, S.~Chintala, L.~Bottou,
-      ``Wasserstein GAN,''
-      \textit{ICML}, 2017.
-
-    \bibitem{gulrajani2017}
-      I.~Gulrajani \textit{et al.},
-      ``Improved Training of Wasserstein GANs,''
-      \textit{NeurIPS}, 2017.
-
-    \bibitem{ring2019}
-      M.~Ring \textit{et al.},
-      ``A survey of network-based intrusion detection data sets,''
-      \textit{Computers \& Security}, vol.~86, pp.~147--167, 2019.
-
-    \bibitem{sharafaldin2019}
-      I.~Sharafaldin, A.~H.~Lashkari, A.~A.~Ghorbani,
-      ``Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization,''
-      \textit{ICISSP}, 2019.
-      (\textbf{CIC-DDoS2019})
-
-    \bibitem{lin2018}
-      Z.~Lin \textit{et al.},
-      ``IDSGAN: Generative Adversarial Networks for Attack Generation against Intrusion Detection,''
-      \textit{arXiv:1809.02077}, 2018.
-
-    \bibitem{usama2019}
-      M.~Usama \textit{et al.},
-      ``Unsupervised Machine Learning for Networking: Techniques, Applications and Research Challenges,''
-      \textit{IEEE Access}, 2019.
-
-    \bibitem{liu2022}
-      G.~Liu \textit{et al.},
-      ``Generating Realistic and Diverse Tests for Autonomous Vehicles,''
-      \textit{IEEE TDSC}, 2022.
-      (Adversarial sample generation methodology)
-
-    \bibitem{lundberg2017}
-      S.~M.~Lundberg, S.-I.~Lee,
-      ``A Unified Approach to Interpreting Model Predictions,''
-      \textit{NeurIPS}, 2017.
-      (\textbf{SHAP})
-
-    \bibitem{goodfellow2018}
-      I.~Goodfellow,
-      ``Attacking Machine Learning with Adversarial Examples,''
-      \textit{OpenAI Blog}, 2018.
-
-    \bibitem{mirsky2023}
-      Y.~Mirsky \textit{et al.},
-      ``The Threat of Offensive AI to Organizations,''
-      \textit{Computers \& Security}, vol.~124, 2023.
-
-  \end{thebibliography}
+%% ── 10. KIẾN TRÚC A: CRITIC ──────────────────────────────────────────────────
+\begin{frame}{Hướng A: Kiến trúc Critic (C)}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Vai trò của Critic}
+        \small
+        Thay vì phân loại Đúng/Sai, Critic trong WGAN \textbf{ghi điểm thực tế}
+        (Wasserstein score) cho từng mẫu dữ liệu.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Thông số kỹ thuật}
+        \small
+        \begin{itemize}
+          \item Input: Vector \textbf{80 features}.
+          \item Kiến trúc: 3-layer (256, 128, 64).
+          \item KHÔNG dùng BatchNorm để tối ưu GP.
+          \item KHÔNG dùng Sigmoid ở output.
+        \end{itemize}
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
 \end{frame}
+
+%% =============================================================================
+\subsection{Hướng B --- Giải pháp nâng cấp}
+%% =============================================================================
+
+%% ── 11. LÝ DO NÂNG CẤP B ────────────────────────────────────────────────────
+\begin{frame}{Tại sao cần Hướng B: Hạn chế của phân phối đơn thuần}
+  \begin{itemize}
+    \item \textbf{Vấn đề của Hướng A}: Gần gũi với dữ liệu huấn luyện IDS
+          sẵn có $\to$ IDS đã quá quen với các ``mẫu chuẩn'' này.
+    \item \textbf{Nhu cầu An toàn}: Hệ thống cần được thử thách bởi các
+          mẫu \textbf{không chính xác về phân phối} nhưng vẫn gây ra tấn
+          công và qua mặt được AI.
+  \end{itemize}
+  \vspace{10pt}
+  \begin{alertblock}{Giải pháp nâng cấp}
+    Tích hợp phản hồi từ Detector vào hàm mất mát của GAN để tạo ra các
+    biến thể đối kháng (Adversarial Examples).
+  \end{alertblock}
+\end{frame}
+
+%% ── 12. ARMS RACE (KHÁI NIỆM) ────────────────────────────────────────────────
+\begin{frame}{Hướng B: Tiến hóa qua Cuộc đua vũ trang (Arms Race)}
+  \begin{itemize}
+    \item \textbf{Round 1}: GAN đối đầu với Detector sơ khai.
+    \item \textbf{Adversarial Training}: Detector học từ thất bại để trở
+          nên mạnh mẽ hơn.
+    \item \textbf{Round 2}: GAN tự nâng cấp để tìm ra sơ hở của phiên bản
+          IDS đã được hardening.
+  \end{itemize}
+  \vspace{10pt}
+  \begin{block}{Chiến thuật Bypass}
+    GAN học cách điều chỉnh các đặc trưng phi hàm (Non-functional) để làm
+    lệch hướng phán đoán của các hệ thống AI phòng thủ.
+  \end{block}
+\end{frame}
+
+%% ── 13. AUXILIARY LOSS ───────────────────────────────────────────────────────
+\begin{frame}{Hướng B: Hàm mất mát phối hợp (Auxiliary Loss)}
+  Công thức tối ưu cho Generator nâng cấp:
+  \[ \mathcal{L}_G^{Total} = \mathcal{L}_{WGAN}
+     + \alpha \cdot \mathcal{L}_{adv}
+     + \beta  \cdot \mathcal{L}_{constraint} \]
+  \vspace{6pt}
+  \begin{itemize}
+    \item $\mathcal{L}_{adv}$: Phản hồi từ IDS, ép IDS phân loại nhầm là
+          Benign.
+    \item $\mathcal{L}_{constraint}$: Đảm bảo các đặc trưng Functional
+          không bị biến đổi quá mức.
+    \item \textbf{Trọng số $\alpha, \beta$}: Điều tiết giữa sức mạnh tấn
+          công và tính thực tế của mẫu mạng.
+      \begin{itemize}
+        \item Thực nghiệm: $\alpha = 1.0$, $\beta = 0.5$ ---
+              \textit{ưu tiên sức mạnh bypass trong giai đoạn Red Teaming}.
+        \item Tăng $\beta$ khi muốn giữ tính mạng lưới cao hơn
+              (trade-off bypass vs.\ realism).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%% ── 14. PHÂN LỚP FEATURE ─────────────────────────────────────────────────────
+\begin{frame}{Hướng B: Phân lớp Feature trong đối kháng}
+  Chúng tôi chia 80 features thành:
+  \begin{itemize}
+    \item \textcolor{danger}{\textbf{Functional (16 đặc trưng):}}
+      Protocol, SYN Flag, Header Length\ldots\ Nếu GAN thay đổi bừa bãi,
+      traffic sẽ không chạy được trên hạ tầng mạng thật.
+    \item \textcolor{detcolor}{\textbf{Non-functional (64 đặc trưng):}}
+      IAT (Inter-arrival Time), Byte counts\ldots\ Đây là ``vùng sáng tạo''
+      để GAN tìm kẽ hở bypass.
+  \end{itemize}
+  \begin{alertblock}{Chiến lược Constraint}
+    Sử dụng MSE loss để khóa chặt 16 Functional features về gần dải giá trị
+    của traffic DDoS thật $[P_1, P_{99}]$.
+  \end{alertblock}
+\end{frame}
+
+%% ── 15. ADVERSARIAL TRAINING ─────────────────────────────────────────────────
+\begin{frame}{Hướng B: Cơ chế gia cố IDS (Adversarial Training)}
+  \begin{itemize}
+    \item Lấy dữ liệu GAN Round 1 sinh ra (mẫu đã lừa được detector).
+    \item Trộn với dữ liệu thực theo tỉ lệ 50--50.
+    \item Huấn luyện lại bộ phân loại MLP ban đầu.
+  \end{itemize}
+  \vspace{10pt}
+  \begin{exampleblock}{Kết quả Giai đoạn này}
+    Mô hình IDS (Detector v2) sau khi gia cố sẽ có khả năng chống lại không
+    chỉ DDoS thực mà cả các mẫu GAN sơ cấp.
+  \end{exampleblock}
+\end{frame}
+
+%% =============================================================================
+\section{Thực nghiệm \& Kết quả}
+%% =============================================================================
+
+%% ── 16. ĐỘ ĐO ĐÁNH GIÁ (Realistic) ──────────────────────────────────────────
+\begin{frame}{Độ đo đánh giá Hướng A (Realistic)}
+  \begin{itemize}
+    \item \textbf{Wasserstein Distance (WD)}: Khoảng cách dịch chuyển tối
+          thiểu giữa 2 phân phối.
+    \item \textbf{MMD (Maximum Mean Discrepancy)}: So sánh độ lệch vector
+          đặc trưng trong không gian kernel.
+    \item \textbf{Validity Score}:
+          \% mẫu giả có đặc trưng Functional nằm trong giới hạn thực thi
+          mạng $[P_1, P_{99}]$.
+  \end{itemize}
+\end{frame}
+
+%% ── 17. ĐỘ ĐO ĐÁNH GIÁ (Attack) ─────────────────────────────────────────────
+\begin{frame}{Độ đo đánh giá Hướng B (Attack)}
+  \begin{itemize}\setlength\itemsep{8pt}
+    \item \textbf{FoolRate (Bypass Rate)}: Tỷ lệ \% mẫu DDoS sinh ra mà
+          máy học phân loại thành Benign.
+    \item \textbf{F1-Score}: Đánh giá khả năng nhận diện của Detector.
+          Càng thấp nghĩa là GAN càng thành công.
+    \item \textbf{Transferability}: Khả năng tấn công chéo vào các mô hình
+          Black-box (Random Forest).
+  \end{itemize}
+\end{frame}
+
+%% ── 18. KẾT QUẢ HƯỚNG A: PHÂN PHỐI ─────────────────────────────────────────
+\begin{frame}{Kết quả Hướng A: So sánh phân phối}
+  \begin{columns}[T]
+    \begin{column}{0.65\textwidth}
+      \includegraphics[width=\textwidth]{fig_distribution}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Phân tích}
+        \footnotesize
+        KDE plot cho thấy WGAN học được hình dạng phân phối (Shape) của
+        real DDoS. Đường bao phủ (Density) có sự tương đồng rất cao
+        giữa Real (xanh) và GAN (tím).
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ── 19. KẾT QUẢ HƯỚNG A: VALIDITY HEATMAP ───────────────────────────────────
+\begin{frame}{Kết quả Hướng A: Tính thực tế (Validity Heatmap)}
+  \centering
+  \includegraphics[width=0.9\textwidth, height=0.7\textheight,
+                   keepaspectratio]{fig_validity_heatmap}
+  \par\vspace{4pt}
+  \footnotesize
+  Validity Score: Độ ổn định của 16 đặc trưng Functional qua các vòng
+  huấn luyện Hướng A.
+\end{frame}
+
+%% ── 20. KẾT QUẢ HƯỚNG B: BẢNG BYPASS ───────────────────────────────────────
+\begin{frame}{Kết quả Hướng B: Bypass Rate qua các Round}
+  \begin{table}
+    \centering \footnotesize
+    \begin{tabular}{lccc}
+      \toprule
+      \textbf{Giai đoạn} &
+      \textbf{F1-score Detector} &
+      \textbf{FoolRate (Bypass)} \\
+      \midrule
+      Baseline (Phút 0)          & 0.9996          & 0.00\%         \\
+      \rowcolor{rowred}
+      \textbf{Round 1 (Attack v1)} & \textbf{0.0008} & \textbf{100.00\%} \\
+      \rowcolor{rowgreen}
+      Adversarial Training       & 0.9998          & 0.00\%         \\
+      \rowcolor{rowred}
+      \textbf{Round 2 (Attack v2)} & \textbf{0.0008} & \textbf{100.00\%} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \begin{alertblock}{Kết luận}
+    Hướng B đã chuyển hóa từ ``bắt chước'' sang ``tấn công'', đạt tỉ lệ
+    lừa IDS hoàn hảo (100\%).
+  \end{alertblock}
+\end{frame}
+
+%% ── 21. KẾT QUẢ HƯỚNG B: ĐỒ THỊ ARMS RACE (giữ lại để tạo kịch tính) ───────
+\begin{frame}{Kết quả Hướng B: Đồ thị Arms Race Evolution}
+  \centering
+  \includegraphics[width=0.82\textwidth, height=0.65\textheight,
+                   keepaspectratio]{fig_armsrace}
+  \par\vspace{4pt}
+  \footnotesize
+  Đồ thị thể hiện hiệu quả của GAN khi được bổ sung Adversarial Loss
+  $\to$ FoolRate bật vọt lên 100\% sau mỗi Round.
+\end{frame}
+
+%% ── 22. KẾT QUẢ HƯỚNG B: TRANSFERABILITY ────────────────────────────────────
+\begin{frame}{Kết quả Hướng B: Tính chuyển đổi (Transferability)}
+  Thử nghiệm GAN được train trên MLP để tấn công mô hình \textbf{Random
+  Forest (RF)} --- một kiến trúc hoàn toàn khác, không được biết trước
+  (Black-box).
+  \vspace{8pt}
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Kiến trúc Detector Target} &
+    \textbf{Bypass Rate} &
+    \textbf{Nhận xét} \\
+    \midrule
+    MLP (Deep Learning) & 100.0\% & Mô hình huấn luyện (White-box) \\
+    Random Forest (Tree-based) &
+      \textcolor{success}{\textbf{87.16\%}} &
+      Mô hình chưa thấy (\textbf{Black-box}) \\
+    \bottomrule
+  \end{tabular}
+  \vspace{8pt}
+  \begin{exampleblock}{\textbf{Điểm sáng: Transferability}}
+    \small
+    Bypass rate \textbf{87.16\%} trên Random Forest chứng minh GAN
+    \textbf{không chỉ học vẹt} lỗi của MLP --- các mẫu đối kháng mang
+    tính tổng quát cao, có thể tấn công các hệ thống IDS dùng công nghệ
+    khác nhau trong thực tế.
+  \end{exampleblock}
+\end{frame}
+
+%% ── 23. SO SÁNH A VS B ───────────────────────────────────────────────────────
+\begin{frame}{Bảng so sánh kết quả thực nghiệm A vs B}
+  \centering \footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Đặc tính} &
+    \textbf{Hướng A (Basic)} &
+    \textbf{Hướng B (Upgrade)} \\
+    \midrule
+    Phân phối xác suất  & Tiệm cận thực tế nhất
+                         & Hơi sai lệch để tối ưu bypass \\
+    Độ tương đồng (WD)  & \textcolor{success}{\textbf{Rất thấp (0.12)}}
+                         & Cao hơn (0.16) \\
+    Tính mạng (Validity)& Rất cao     & Khá cao \\
+    Khả năng lừa IDS    & Thấp (0--5\%)
+                         & \textcolor{danger}{\textbf{Rất cao (100\%)}} \\
+    Mục đích sử dụng    & Làm giàu dữ liệu huấn luyện
+                         & Kiểm thử bảo mật (Red Teaming) \\
+    \bottomrule
+  \end{tabular}
+  \vspace{10pt}
+  \small Đồ án chứng minh sự cân bằng (Trade-off) giữa
+  ``Độ giống'' và ``Sức mạnh tấn công''.
+\end{frame}
+
+%% =============================================================================
+\section{Demo}
+%% =============================================================================
 
 \begin{frame}[plain]
   \vfill
   \centering
-  \textbf{\LARGE THANK YOU!}\\
-  \vspace{12pt}
-  \small\textcolor{gray}{Demo: \url{https://ddos-gan.vercel.app}}
+  \Huge \textbf{DEMO}
   \vfill
+\end{frame}
+
+\begin{frame}{Giao diện Demo \& Tính năng nổi bật}
+  \begin{itemize}
+    \item \textbf{Live Generation}: Sinh mẫu theo thời gian thực từ Noise.
+    \item \textbf{Batch Analysis}: So sánh trực tiếp Bypass Rate của A vs B
+          trên bảng thống kê.
+    \item \textbf{Visualization}: Radar chart đặc trưng và Threat Score
+          Histogram.
+  \end{itemize}
+  \vspace{10pt}
+  \centering
+  \textbf{Demo Link}: \url{https://ddos-gan.vercel.app}
+\end{frame}
+
+%% =============================================================================
+\section{Kết luận}
+%% =============================================================================
+
+\begin{frame}{Kết luận}
+  \begin{itemize}\setlength\itemsep{6pt}
+    \item Đã xây dựng hoàn chỉnh framework sinh mẫu DDoS bằng GAN với
+          2 hướng chiến lược.
+    \item Cơ chế huấn luyện đối kháng (Hướng B) chứng minh khả năng
+          khuất phục các mô hình IDS hiện đại với FoolRate 100\%.
+    \item Tính Transferability (87.16\% trên Black-box RF) cho thấy hệ
+          thống có giá trị ứng dụng thực tế cao trong việc gia cố an ninh
+          mạng doanh nghiệp thông qua Adversarial Training.
+  \end{itemize}
+\end{frame}
+
+%% =============================================================================
+\section{Tài liệu tham khảo}
+%% =============================================================================
+
+\begin{frame}[plain]
+  \vfill
+  \centering
+  \Huge \textbf{Xin cảm ơn!}\\[12pt]
+  \normalsize \textit{Mọi câu hỏi xin gửi về nhóm.}
+  \vfill
+\end{frame}
+
+\begin{frame}[allowframebreaks]{Tài liệu tham khảo}
+  \footnotesize
+  \begin{thebibliography}{99}
+    \bibitem{sharafaldin2019} I. Sharafaldin et al. CIC-DDoS2019.
+    \bibitem{arjovsky2017}   M. Arjovsky et al. Wasserstein GAN.
+    \bibitem{lin2018}        Z. Lin et al. IDSGAN.
+    \bibitem{lundberg2017}   S. Lundberg et al. Interpreting model predictions.
+  \end{thebibliography}
 \end{frame}
 
 \end{document}

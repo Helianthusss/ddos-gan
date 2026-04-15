@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any
 import torch
 import numpy as np
 import sys
@@ -42,20 +43,20 @@ hidden_dims = [256, 128, 64]
 
 # Detectors
 detector_v1 = MLPDetector(input_dim=input_dim, hidden_dims=hidden_dims, dropout=0.3).to(DEVICE)
-detector_v1.load_state_dict(torch.load("detector/detector_best.pt", map_location=DEVICE))
+detector_v1.load_state_dict(torch.load("detector/detector_best.pt", map_location=DEVICE, weights_only=True))
 detector_v1.eval()
 
 detector_v2 = MLPDetector(input_dim=input_dim, hidden_dims=hidden_dims, dropout=0.3).to(DEVICE)
-detector_v2.load_state_dict(torch.load("detector/detector_adv_r1.pt", map_location=DEVICE))
+detector_v2.load_state_dict(torch.load("detector/detector_adv_r1.pt", map_location=DEVICE, weights_only=True))
 detector_v2.eval()
 
 # Generators
 gen_r0 = Generator(latent_dim=latent_dim, output_dim=input_dim).to(DEVICE)
-gen_r0.load_state_dict(torch.load("gan/generator_r0.pt", map_location=DEVICE))
+gen_r0.load_state_dict(torch.load("gan/generator_r0.pt", map_location=DEVICE, weights_only=True))
 gen_r0.eval()
 
 gen_r2 = Generator(latent_dim=latent_dim, output_dim=input_dim).to(DEVICE)
-gen_r2.load_state_dict(torch.load("gan/generator_r2.pt", map_location=DEVICE))
+gen_r2.load_state_dict(torch.load("gan/generator_r2.pt", map_location=DEVICE, weights_only=True))
 gen_r2.eval()
 print("[INFO] All models loaded successfully!\n")
 
@@ -77,11 +78,12 @@ def generate_fake(round: int = 0):
             return {"error": "Invalid round"}
     return {"features": fake.cpu().numpy()[0].tolist(), "type": f"GAN Round {round}"}
 
-from typing import Dict, Any, List
+class DetectRequest(BaseModel):
+    features: List[float] = Field(..., min_length=80, max_length=80, description="DDoS traffic features (80-dim)")
 
 @app.post("/api/detect")
-def detect(model: str, req: Dict[str, Any]):
-    features = req.get("features", [])
+def detect(model: str, req: DetectRequest):
+    features = req.features
     x = torch.tensor([features], dtype=torch.float32).to(DEVICE)
     with torch.no_grad():
         if model == "v1":
